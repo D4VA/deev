@@ -1,15 +1,21 @@
 'use strict'
-
+//IMPORTS
 var bcrypt = require('bcrypt-nodejs');
-var user = require('../models/user')
+var User = require('../models/user')
+var jwt = require('../services/jwt')//Token
+
+function ejemplo(req, res){
+    res.status(200).send({ message: 'hola' })
+}
+
 
 function register(req, res){
     var user = new User();
     var params = req.body;
 
-    if(params.name && params.usuario && params.password){
-        user.name = params.name
-        user.user = params.usuario
+    if(params.nombre && params.usuario && params.password){
+        user.nombre = params.nombre
+        user.usuario = params.usuario
         user.email = params.email
         user.rol = 'ROLE_USUARIO'
         user.image = null;
@@ -20,7 +26,7 @@ function register(req, res){
         ]}).exec((err,users)=>{
             if(err) return res.status(500).send({ message: 'Error en la peticion de usuarios' })
 
-            if(usuarios && usuarios.length >= 1 ){
+            if(users && users.length >= 1 ){
                 return res.status(500).send({ message: 'El usuario ya existe' })
             }else{
                 bcrypt.hash(params.password, null, null, (err, hash)=>{
@@ -45,6 +51,69 @@ function register(req, res){
     }
 }
 
+function login(req, res){
+    var params = req.body;
+
+    User.findOne({email: params.email},(err,user)=>{
+        if(err) return res.status(500).send({message: 'Error'})
+        
+        if(user){
+            bcrypt.compare(params.password, user.password, (err,check)=>{
+                if(check){
+                    if(params.gettoken){
+                        return res.status(200).send({
+                            token: jwt.createToken(user)
+                        })
+                    }else{
+                        user.password = undefined;
+                        return res.status(200).send({ user })
+                    }
+                }else{
+                    return res.status(404).send({message: 'el usuario no se ha podido registrar'})
+                }
+            })
+        }else{
+            return res.status(404).send({message: 'El usuario no se ha podido loguear'})
+        }
+    })
+}
+
+
+function editarUsuario(req, res){
+    var userId = req.params.idUsuario
+    var params = req.body
+    
+    //BORRAR LA PROPIEDAD DE PASSWORD PARA NO SER EDITADA
+    delete params.password
+    if(userId != req.user.sub){
+        return res.status(500).send({ message: 'No tiene los permisos para actualizar este usuario' })
+    }
+    User.findByIdAndUpdate(userId, params, { new: true }, (err, usuarioActualizado) =>{
+        if(err) return res.status(500).send({ message: 'Error en la petición' })
+        if(!usuarioActualizado) return res.status(404).send({ message: 'Error no se ha podido actualizar los datos del usuario' })
+
+        return res.status(200).send({ usuario: usuarioActualizado })
+    })
+}
+
+function BuscarUser(req, res){
+    var userId = req.params.idUsuario
+
+    if(userId != req.params.idUsuario){
+        return res.status(500).send({ message: 'No se encontro el usuario' })
+    }
+    User.findById({userId},(err,obtainerUser)=>{
+        if(err){
+            return res.status(404).send({message: 'El usuario no se encuentra' })
+        }
+    })
+    
+}
+
 module.exports = {
-    register
+    register,
+    login,
+    ejemplo,
+    editarUsuario,
+    BuscarUser
 }
