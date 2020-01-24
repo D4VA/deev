@@ -77,8 +77,6 @@ function login(req, res){
         }
     })
 }
-
-
 function editarUsuario(req, res){
     var userId = req.params.idUsuario
     var params = req.body
@@ -95,17 +93,18 @@ function editarUsuario(req, res){
         return res.status(200).send({ usuario: usuarioActualizado })
     })
 }
-
 function BuscarUser(req, res){
-    var userId = req.params.idUsuario
+    var userId = req.params.sub
 
-    if(userId != req.params.idUsuario){
-        return res.status(500).send({ message: 'No se encontro el usuario' })
+    if(userId != req.params.sub){
+        return res.status(500).send({ message: 'No tiene los permisos para actualizar este usuarioo' })
     }
-    User.findById({userId},(err,obtainerUser)=>{
-        if(err){
-            return res.status(404).send({message: 'El usuario no se encuentra' })
+    User.findById( userId ,(err, obtainerUser)=>{
+        if(err){ return res.status(500).send({ message: 'No tiene los permisos para actualizar este usuario' })
         }
+        if(!obtainerUser) return res.status(404).send({ message: 'Error no se encontro el usuario' })
+
+        return res.status(200).send({ usuario: obtainerUser})
     })
     
 }
